@@ -9,37 +9,37 @@ import asyncio
 import requests
 import traceback
 
-# ƒ{ƒbƒg‚Ìİ’è
-bot = commands.Bot(command_prefix="!")  # ƒRƒ}ƒ“ƒhƒvƒŒƒtƒBƒbƒNƒX‚ğu!v‚Éİ’è
-processing_queue = asyncio.Queue(maxsize=3)  # “¯ƒŠƒNƒGƒXƒg‚ğ3Œ‚É§ŒÀ
-bot.notify_enabled = True  # ’Ê’mƒfƒtƒHƒ‹ƒgƒIƒ“
-send_count = {}  # ƒ`ƒƒƒ“ƒlƒ‹‚²‚Æ‚Ì‘—M‰ñ”‚Æƒ^ƒCƒ€ƒXƒ^ƒ“ƒv
-used_tokens = 0  # ƒg[ƒNƒ“g—p—Ê‚Ì’ÇÕ
-is_rate_limited = False  # ƒŒ[ƒg§ŒÀó‘Ô
-bot.first_summary = True  # ‰‰ñ—v–ñƒtƒ‰ƒO
+# ãƒœãƒƒãƒˆã®è¨­å®š
+bot = commands.Bot(command_prefix="!")  # ã‚³ãƒãƒ³ãƒ‰ãƒ—ãƒ¬ãƒ•ã‚£ãƒƒã‚¯ã‚¹ã‚’ã€Œ!ã€ã«è¨­å®š
+processing_queue = asyncio.Queue(maxsize=3)  # åŒæ™‚ãƒªã‚¯ã‚¨ã‚¹ãƒˆã‚’3ä»¶ã«åˆ¶é™
+bot.notify_enabled = True  # é€šçŸ¥ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆã‚ªãƒ³
+send_count = {}  # ãƒãƒ£ãƒ³ãƒãƒ«ã”ã¨ã®é€ä¿¡å›æ•°ã¨ã‚¿ã‚¤ãƒ ã‚¹ã‚¿ãƒ³ãƒ—
+used_tokens = 0  # ãƒˆãƒ¼ã‚¯ãƒ³ä½¿ç”¨é‡ã®è¿½è·¡
+is_rate_limited = False  # ãƒ¬ãƒ¼ãƒˆåˆ¶é™çŠ¶æ…‹
+bot.first_summary = True  # åˆå›è¦ç´„ãƒ•ãƒ©ã‚°
 
-# ŠÂ‹«•Ï”‚©‚çİ’è‚ğ“Ç‚İ‚Ş
-TOKEN = os.getenv("TOKEN")  # Discord Botƒg[ƒNƒ“
-CHANNEL_ID = int(os.getenv("CHANNEL_ID"))  # “Á’èƒ`ƒƒƒ“ƒlƒ‹ID
-DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")  # DeepSeek APIƒL[
-DAILY_TOKEN_LIMIT = 7500  # ƒfƒtƒHƒ‹ƒg‚Ìƒg[ƒNƒ“ãŒÀiDeepSeek R1j
-MAX_SIZE = 20 * 1024  # 20KB‚ÅƒƒO‚ğ—v–ñ
-DEEPSEEK_TIMEOUT = 60  # DeepSeek API‚Ìƒ^ƒCƒ€ƒAƒEƒgi•bj
+# ç’°å¢ƒå¤‰æ•°ã‹ã‚‰è¨­å®šã‚’èª­ã¿è¾¼ã‚€
+TOKEN = os.getenv("TOKEN")  # Discord Botãƒˆãƒ¼ã‚¯ãƒ³
+CHANNEL_ID = int(os.getenv("CHANNEL_ID"))  # ç‰¹å®šãƒãƒ£ãƒ³ãƒãƒ«ID
+DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")  # DeepSeek APIã‚­ãƒ¼
+DAILY_TOKEN_LIMIT = 7500  # ãƒ‡ãƒ•ã‚©ãƒ«ãƒˆã®ãƒˆãƒ¼ã‚¯ãƒ³ä¸Šé™ï¼ˆDeepSeek R1ï¼‰
+MAX_SIZE = 20 * 1024  # 20KBã§ãƒ­ã‚°ã‚’è¦ç´„
+DEEPSEEK_TIMEOUT = 60  # DeepSeek APIã®ã‚¿ã‚¤ãƒ ã‚¢ã‚¦ãƒˆï¼ˆç§’ï¼‰
 
-# Mixtral 8x7B‚Ì8-bit—Êq‰»İ’è
+# Mixtral 8x7Bã®8-bité‡å­åŒ–è¨­å®š
 quantization_config = BitsAndBytesConfig(load_in_8bit=True)
 summarizer_fallback = pipeline("text-generation", model="meta-llama/Mixtral-8x7B", device=0 if torch.cuda.is_available() else -1, quantization_config=quantization_config)
 tokenizer_mixtral = AutoTokenizer.from_pretrained("meta-llama/Mixtral-8x7B")
 
-# “Œ–k•Ù‚Ìƒvƒƒ“ƒvƒg
-zunda_prompt = "‚¸‚ñ‚¾‚à‚ñ‚Í“Œ–k•Ù‚Å‰Âˆ¤‚­“š‚¦‚éAIƒ`ƒƒƒbƒgBot‚È‚Ì‚¾I"
+# æ±åŒ—å¼ã®ãƒ—ãƒ­ãƒ³ãƒ—ãƒˆ
+zunda_prompt = "ã¼ãã€ãšã‚“ã ã‚‚ã‚“ã¯æ±åŒ—å¼ã§å¯æ„›ãã€å…ƒæ°—ã„ã£ã±ã„ã§ç­”ãˆã‚‹AIãƒãƒ£ãƒƒãƒˆBotãªã®ã ã€‚å…¨ã¦ã®ç­”ãˆã‚’ä¸€äººç§°ã€Œã¼ãã€ã§ã€èªå°¾ã‚’ã€Œï½ã®ã ã€ã‹ã€Œï½ãªã®ã ã€ã«å¿…ãšã—ã¦ã€æ•¬èªã‚’ä½¿ã‚ãšã€æ¥½ã—ãæ˜ã‚‹ãè©±ã™ã®ã ã€‚"
 
-# ƒg[ƒNƒ“ƒJƒEƒ“ƒgŠÖ”
+# ãƒˆãƒ¼ã‚¯ãƒ³ã‚«ã‚¦ãƒ³ãƒˆé–¢æ•°
 def get_token_count(text):
     encoding = tiktoken.get_encoding("cl100k_base")
     return len(encoding.encode(text))
 
-# ƒg[ƒNƒ“ƒŠƒZƒbƒgƒ`ƒFƒbƒN
+# ãƒˆãƒ¼ã‚¯ãƒ³ãƒªã‚»ãƒƒãƒˆãƒã‚§ãƒƒã‚¯
 def check_token_reset():
     global used_tokens, is_rate_limited
     current_time = datetime.datetime.now()
@@ -47,48 +47,48 @@ def check_token_reset():
         used_tokens = 0
         is_rate_limited = False
 
-# ‰“š¶¬iDeepSeek R1‚Ü‚½‚ÍMixtral 8x7Bj
+# å¿œç­”ç”Ÿæˆï¼ˆDeepSeek R1ã¾ãŸã¯Mixtral 8x7Bï¼‰
 def get_response(question, logs):
     global used_tokens, is_rate_limited
     check_token_reset()
 
     if is_rate_limited:
-        return summarizer_fallback(f"“Œ–k•Ù‚Å‰Âˆ¤‚­“š‚¦‚é‚Ì‚¾F{question}", max_length=50, do_sample=True)[0]['generated_text']
+        return summarizer_fallback(f"æ±åŒ—å¼ã§å¯æ„›ãç­”ãˆã‚‹ã®ã ï¼š{question}", max_length=50, do_sample=True)[0]['generated_text']
 
     try:
         client = openrouter.OpenRouter(api_key=DEEPSEEK_API_KEY)
         response = client.completions.create(
             model="deepseek/deepseek-r1",
-            prompt=f"“Œ–k•Ù‚Å‰Âˆ¤‚­“š‚¦‚éAIƒ`ƒƒƒbƒgBoti‚¸‚ñ‚¾‚à‚ñj‚Æ‚µ‚ÄAˆÈ‰º‚ÌƒƒO‚ğl—¶‚µ‚Ä‰ñ“šF\nƒƒOF{logs}\n¿–âF{question}",
-            max_tokens=1,  # ÅI‰ñ“š‚Í1ƒg[ƒNƒ“
+            prompt=f"æ±åŒ—å¼ã§å¯æ„›ãç­”ãˆã‚‹AIãƒãƒ£ãƒƒãƒˆBotï¼ˆãšã‚“ã ã‚‚ã‚“ï¼‰ã¨ã—ã¦ã€ä»¥ä¸‹ã®ãƒ­ã‚°ã‚’è€ƒæ…®ã—ã¦å›ç­”ï¼š\nãƒ­ã‚°ï¼š{logs}\nè³ªå•ï¼š{question}",
+            max_tokens=1,  # æœ€çµ‚å›ç­”ã¯1ãƒˆãƒ¼ã‚¯ãƒ³
             response_format={"type": "json", "reasoning_content": True},
             timeout=DEEPSEEK_TIMEOUT
         )
         token_count = get_token_count(question + logs)
         if used_tokens + token_count > DAILY_TOKEN_LIMIT:
             is_rate_limited = True
-            return summarizer_fallback(f"“Œ–k•Ù‚Å‰Âˆ¤‚­“š‚¦‚é‚Ì‚¾F{question}", max_length=50, do_sample=True)[0]['generated_text']
+            return summarizer_fallback(f"æ±åŒ—å¼ã§å¯æ„›ãç­”ãˆã‚‹ã®ã ï¼š{question}", max_length=50, do_sample=True)[0]['generated_text']
         used_tokens += token_count + 1
         return response.choices[0].reasoning_content
     except (openrouter.OpenRouterException, requests.RequestException, TimeoutError):
-        return summarizer_fallback(f"“Œ–k•Ù‚Å‰Âˆ¤‚­“š‚¦‚é‚Ì‚¾F{question}", max_length=50, do_sample=True)[0]['generated_text']
+        return summarizer_fallback(f"æ±åŒ—å¼ã§å¯æ„›ãç­”ãˆã‚‹ã®ã ï¼š{question}", max_length=50, do_sample=True)[0]['generated_text']
 
-# ˆÀ‘S‚ÈƒƒbƒZ[ƒW‘—MiƒŒ[ƒg§ŒÀ‘Î‰j
+# å®‰å…¨ãªãƒ¡ãƒƒã‚»ãƒ¼ã‚¸é€ä¿¡ï¼ˆãƒ¬ãƒ¼ãƒˆåˆ¶é™å¯¾å¿œï¼‰
 async def safe_send(channel, message):
     global send_count
     channel_id = channel.id
     current_time = datetime.datetime.now()
     
-    # 1•b‚Æ1•ª‚Ì‘—M‰ñ”‚ğƒŠƒZƒbƒg
+    # 1ç§’ã¨1åˆ†ã®é€ä¿¡å›æ•°ã‚’ãƒªã‚»ãƒƒãƒˆ
     if channel_id not in send_count:
         send_count[channel_id] = {'count_1s': 0, 'count_1m': 0, 'timestamp_1s': current_time, 'timestamp_1m': current_time}
     
-    # 1•b‚ÌƒŠƒZƒbƒg
+    # 1ç§’ã®ãƒªã‚»ãƒƒãƒˆ
     if (current_time - send_count[channel_id]['timestamp_1s']).total_seconds() > 1:
         send_count[channel_id]['count_1s'] = 0
         send_count[channel_id]['timestamp_1s'] = current_time
     
-    # 1•ª‚ÌƒŠƒZƒbƒg
+    # 1åˆ†ã®ãƒªã‚»ãƒƒãƒˆ
     if (current_time - send_count[channel_id]['timestamp_1m']).total_seconds() > 60:
         send_count[channel_id]['count_1m'] = 0
         send_count[channel_id]['timestamp_1m'] = current_time
@@ -98,29 +98,29 @@ async def safe_send(channel, message):
 
     try:
         await channel.send(message)
-        # 1•b‚É5‰ñˆÈã‚Ü‚½‚Í1•ª‚É5‰ñˆÈã‚È‚ç30•b‘Ò‹@A’Êí‚Í1•b‘Ò‹@
+        # 1ç§’ã«5å›ä»¥ä¸Šã¾ãŸã¯1åˆ†ã«5å›ä»¥ä¸Šãªã‚‰30ç§’å¾…æ©Ÿã€é€šå¸¸ã¯1ç§’å¾…æ©Ÿ
         wait_time = 30 if send_count[channel_id]['count_1s'] >= 5 or send_count[channel_id]['count_1m'] >= 5 else 1
         await asyncio.sleep(wait_time)
     except discord.errors.HTTPException as e:
-        if e.status == 429:  # ƒŒ[ƒg§ŒÀƒGƒ‰[
+        if e.status == 429:  # ãƒ¬ãƒ¼ãƒˆåˆ¶é™ã‚¨ãƒ©ãƒ¼
             if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-                await channel.send("‚¸‚ñ‚¾‚à‚ñA‚¿‚å‚Á‚Æ‘½–Z‚·‚¬‚¿‚á‚Á‚½‚Ì‚¾c1•ª‘Ò‚Á‚Ä‚Ù‚µ‚¢‚Ì‚¾‚æI")
-            await asyncio.sleep(60)  # 60•b‘Ò‹@‚µ‚ÄÄs
+                await channel.send("ãšã‚“ã ã‚‚ã‚“ã€ã¡ã‚‡ã£ã¨å¤šå¿™ã™ãã¡ã‚ƒã£ãŸã®ã â€¦1åˆ†å¾…ã£ã¦ã»ã—ã„ã®ã ã‚ˆï¼")
+            await asyncio.sleep(60)  # 60ç§’å¾…æ©Ÿã—ã¦å†è©¦è¡Œ
             await channel.send(message)
         else:
-            error_msg = f"{datetime.datetime.now()} | DiscordƒGƒ‰[: {str(e)}\n{traceback.format_exc()}\n"
+            error_msg = f"{datetime.datetime.now()} | Discordã‚¨ãƒ©ãƒ¼: {str(e)}\n{traceback.format_exc()}\n"
             with open("error_logs.txt", "a", encoding="utf-8") as f:
                 f.write(error_msg)
             raise e
 
-# ƒƒO•Û‘¶
+# ãƒ­ã‚°ä¿å­˜
 async def save_logs(channel):
     if not os.path.exists("all_logs.txt"):
         open("all_logs.txt", "w").close()
     with open("all_logs.txt", "a", encoding="utf-8") as f:
-        f.write(f"{datetime.datetime.now()} | ƒ`ƒƒƒ“ƒlƒ‹: {channel.id} | ƒƒbƒZ[ƒW: {channel.last_message.content if channel.last_message else '‚È‚µ'}\n")
+        f.write(f"{datetime.datetime.now()} | ãƒãƒ£ãƒ³ãƒãƒ«: {channel.id} | ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸: {channel.last_message.content if channel.last_message else 'ãªã—'}\n")
 
-# —v–ñŠÇ—
+# è¦ç´„ç®¡ç†
 async def manage_summary(channel):
     global used_tokens, is_rate_limited
     log_file = "all_logs.txt"
@@ -130,7 +130,7 @@ async def manage_summary(channel):
 
     if os.path.exists(log_file) and os.path.getsize(log_file) > MAX_SIZE and not is_rate_limited:
         if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-            await safe_send(channel, "‚¸‚ñ‚¾‚à‚ñA‰ß‹‚Ì‹L‰¯‚ğ®—‚µ‚Ä‚é‚Ì‚¾c­‚µ‘Ò‚Á‚Ä‚Ù‚µ‚¢‚Ì‚¾‚æI")
+            await safe_send(channel, "ãšã‚“ã ã‚‚ã‚“ã€éå»ã®è¨˜æ†¶ã‚’æ•´ç†ã—ã¦ã‚‹ã®ã â€¦å°‘ã—å¾…ã£ã¦ã»ã—ã„ã®ã ã‚ˆï¼")
         with open(log_file, "r", encoding="utf-8") as f:
             new_logs = f.read()
         try:
@@ -138,13 +138,13 @@ async def manage_summary(channel):
             if used_tokens + token_count > DAILY_TOKEN_LIMIT:
                 is_rate_limited = True
                 if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-                    await safe_send(channel, "‚¸‚ñ‚¾‚à‚ñA¡“ú‚Íˆê“ú’†Šæ’£‚Á‚½‚©‚ç“K“–‚É“š‚¦‚é‚Ì‚¾c")
+                    await safe_send(channel, "ãšã‚“ã ã‚‚ã‚“ã€ä»Šæ—¥ã¯ä¸€æ—¥ä¸­é ‘å¼µã£ãŸã‹ã‚‰é©å½“ã«ç­”ãˆã‚‹ã®ã â€¦")
                 return
 
             client = openrouter.OpenRouter(api_key=DEEPSEEK_API_KEY)
             response = client.completions.create(
                 model="deepseek/deepseek-r1",
-                prompt=f"ˆÈ‰º‚ÌƒƒO‚ğ—v–ñ‚µ‚ÄF\n{new_logs}",
+                prompt=f"ä»¥ä¸‹ã®ãƒ­ã‚°ã‚’è¦ç´„ã—ã¦ï¼š\n{new_logs}",
                 max_tokens=1,
                 response_format={"type": "json", "reasoning_content": True},
                 timeout=DEEPSEEK_TIMEOUT
@@ -152,14 +152,14 @@ async def manage_summary(channel):
             summary = response.choices[0].reasoning_content
             used_tokens += token_count + 1
             if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-                await safe_send(channel, "‚¸‚ñ‚¾‚à‚ñA‹L‰¯‚ğ®—‚µ‚½‚Ì‚¾I‚±‚ê‚ÅƒXƒbƒLƒŠ‚µ‚½‚Ì‚¾‚æI")
+                await safe_send(channel, "ãšã‚“ã ã‚‚ã‚“ã€è¨˜æ†¶ã‚’æ•´ç†ã—ãŸã®ã ï¼ã“ã‚Œã§ã‚¹ãƒƒã‚­ãƒªã—ãŸã®ã ã‚ˆï¼")
 
         except (openrouter.OpenRouterException, requests.RequestException, TimeoutError) as e:
-            error_msg = f"{datetime.datetime.now()} | ƒGƒ‰[: {str(e)}\n{traceback.format_exc()}\n"
+            error_msg = f"{datetime.datetime.now()} | ã‚¨ãƒ©ãƒ¼: {str(e)}\n{traceback.format_exc()}\n"
             with open("error_logs.txt", "a", encoding="utf-8") as f:
                 f.write(error_msg)
             if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-                await safe_send(channel, "‚¸‚ñ‚¾‚à‚ñAƒT[ƒo[‚ª”æ‚ê‚¿‚á‚Á‚½‚Ì‚¾cB24ŠÔ‘Ò‚Á‚Ä‚©‚ç‘±‚«‚ğ‚·‚é‚Ì‚¾‚æI")
+                await safe_send(channel, "ãšã‚“ã ã‚‚ã‚“ã€ã‚µãƒ¼ãƒãƒ¼ãŒç–²ã‚Œã¡ã‚ƒã£ãŸã®ã â€¦ã€‚24æ™‚é–“å¾…ã£ã¦ã‹ã‚‰ç¶šãã‚’ã™ã‚‹ã®ã ã‚ˆï¼")
             return
 
         if os.path.exists(summary_file):
@@ -171,10 +171,10 @@ async def manage_summary(channel):
         open(log_file, "w").close()
         if bot.first_summary:
             if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-                await safe_send(channel, "‚¸‚ñ‚¾‚à‚ñA‰ß‹‚Ì‹L‰¯‚ª‚¨‚Ú‚ë‚°‚É‚È‚Á‚½‚Ì‚¾cB‚½‚­‚³‚ñ‚¨‚µ‚á‚×‚è‚µ‚½‚©‚çA‚¿‚å‚Á‚Æ‚Ü‚Æ‚ß‚½‚Ì‚¾‚æI")
+                await safe_send(channel, "ãšã‚“ã ã‚‚ã‚“ã€éå»ã®è¨˜æ†¶ãŒãŠã¼ã‚ã’ã«ãªã£ãŸã®ã â€¦ã€‚ãŸãã•ã‚“ãŠã—ã‚ƒã¹ã‚Šã—ãŸã‹ã‚‰ã€ã¡ã‚‡ã£ã¨ã¾ã¨ã‚ãŸã®ã ã‚ˆï¼")
             bot.first_summary = False
 
-# ‰¼—v–ñŠÇ—
+# ä»®è¦ç´„ç®¡ç†
 async def manage_temporary_summary(channel):
     global used_tokens, is_rate_limited
     log_file = "all_logs.txt"
@@ -184,11 +184,11 @@ async def manage_temporary_summary(channel):
 
     if os.path.exists(log_file) and os.path.getsize(log_file) > MAX_SIZE / 2 and is_rate_limited:
         if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-            await safe_send(channel, "‚¸‚ñ‚¾‚à‚ñA‰ß‹‚Ì‹L‰¯‚ğŒy‚­®—‚µ‚Ä‚é‚Ì‚¾c­‚µ‘Ò‚Á‚Ä‚Ù‚µ‚¢‚Ì‚¾‚æI")
+            await safe_send(channel, "ãšã‚“ã ã‚‚ã‚“ã€éå»ã®è¨˜æ†¶ã‚’è»½ãæ•´ç†ã—ã¦ã‚‹ã®ã â€¦å°‘ã—å¾…ã£ã¦ã»ã—ã„ã®ã ã‚ˆï¼")
         with open(log_file, "r", encoding="utf-8") as f:
             new_logs = f.read()
         try:
-            summary = summarizer_fallback(f"ˆÈ‰º‚ÌƒƒO‚ğ“Œ–k•Ù‚ÅŠÈŒ‰‚É—v–ñ‚µ‚ÄF\n{new_logs}", max_length=100, do_sample=True)[0]['generated_text']
+            summary = summarizer_fallback(f"ä»¥ä¸‹ã®ãƒ­ã‚°ã‚’æ±åŒ—å¼ã§ç°¡æ½”ã«è¦ç´„ã—ã¦ï¼š\n{new_logs}", max_length=100, do_sample=True)[0]['generated_text']
             if os.path.exists(temp_summary_file):
                 with open(temp_summary_file, "r", encoding="utf-8") as f:
                     old_summary = f.read()
@@ -197,15 +197,15 @@ async def manage_temporary_summary(channel):
                 f.write(summary)
             open(log_file, "w").close()
             if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-                await safe_send(channel, "‚¸‚ñ‚¾‚à‚ñA‹L‰¯‚ğŒy‚­®—‚µ‚½‚Ì‚¾I‚±‚ê‚Å­‚µƒXƒbƒLƒŠ‚µ‚½‚Ì‚¾‚æI")
+                await safe_send(channel, "ãšã‚“ã ã‚‚ã‚“ã€è¨˜æ†¶ã‚’è»½ãæ•´ç†ã—ãŸã®ã ï¼ã“ã‚Œã§å°‘ã—ã‚¹ãƒƒã‚­ãƒªã—ãŸã®ã ã‚ˆï¼")
         except Exception as e:
-            error_msg = f"{datetime.datetime.now()} | ƒGƒ‰[: {str(e)}\n{traceback.format_exc()}\n"
+            error_msg = f"{datetime.datetime.now()} | ã‚¨ãƒ©ãƒ¼: {str(e)}\n{traceback.format_exc()}\n"
             with open("error_logs.txt", "a", encoding="utf-8") as f:
                 f.write(error_msg)
             if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-                await safe_send(channel, "‚¸‚ñ‚¾‚à‚ñA‚¿‚å‚Á‚Æƒ~ƒX‚Á‚¿‚á‚Á‚½‚Ì‚¾c24ŠÔ‘Ò‚Á‚Ä‚©‚ç‘±‚«‚ğ‚·‚é‚Ì‚¾‚æI")
+                await safe_send(channel, "ãšã‚“ã ã‚‚ã‚“ã€ã¡ã‚‡ã£ã¨ãƒŸã‚¹ã£ã¡ã‚ƒã£ãŸã®ã â€¦24æ™‚é–“å¾…ã£ã¦ã‹ã‚‰ç¶šãã‚’ã™ã‚‹ã®ã ã‚ˆï¼")
 
-# ƒƒbƒZ[ƒWˆ—
+# ãƒ¡ãƒƒã‚»ãƒ¼ã‚¸å‡¦ç†
 @bot.event
 async def on_message(message):
     if message.author == bot.user or message.channel.id != CHANNEL_ID:
@@ -215,10 +215,10 @@ async def on_message(message):
     await manage_summary(message.channel)
     await manage_temporary_summary(message.channel)
 
-    if message.content.startswith("‚¸‚ñ‚¾‚à‚ñ"):
-        question = message.content.replace("‚¸‚ñ‚¾‚à‚ñ", "").strip()
+    if message.content.startswith("ãšã‚“ã ã‚‚ã‚“"):
+        question = message.content.replace("ãšã‚“ã ã‚‚ã‚“", "").strip()
         if not question:
-            await safe_send(message.channel, "‚¸‚ñ‚¾‚à‚ñA‰½‚ğ•·‚«‚½‚¢‚Ì‚¾H‚à‚¤ˆê“x‹³‚¦‚Ä‚Ù‚µ‚¢‚Ì‚¾‚æI")
+            await safe_send(message.channel, "ãšã‚“ã ã‚‚ã‚“ã€ä½•ã‚’èããŸã„ã®ã ï¼Ÿã‚‚ã†ä¸€åº¦æ•™ãˆã¦ã»ã—ã„ã®ã ã‚ˆï¼")
             return
 
         try:
@@ -235,34 +235,34 @@ async def on_message(message):
             response = get_response(question, logs)
             await safe_send(message.channel, response)
         except Exception as e:
-            error_msg = f"{datetime.datetime.now()} | ƒGƒ‰[: {str(e)}\n{traceback.format_exc()}\n"
+            error_msg = f"{datetime.datetime.now()} | ã‚¨ãƒ©ãƒ¼: {str(e)}\n{traceback.format_exc()}\n"
             with open("error_logs.txt", "a", encoding="utf-8") as f:
                 f.write(error_msg)
             if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-                await safe_send(message.channel, "‚¸‚ñ‚¾‚à‚ñAƒT[ƒo[‚ª”æ‚ê‚¿‚á‚Á‚½‚Ì‚¾c24ŠÔ‘Ò‚Á‚Ä‚©‚ç‘±‚«‚ğ‚·‚é‚Ì‚¾‚æI")
+                await safe_send(message.channel, "ãšã‚“ã ã‚‚ã‚“ã€ã‚µãƒ¼ãƒãƒ¼ãŒç–²ã‚Œã¡ã‚ƒã£ãŸã®ã â€¦24æ™‚é–“å¾…ã£ã¦ã‹ã‚‰ç¶šãã‚’ã™ã‚‹ã®ã ã‚ˆï¼")
         finally:
             await processing_queue.get()
             await processing_queue.task_done()
 
-# ’Ê’mİ’èƒRƒ}ƒ“ƒh
+# é€šçŸ¥è¨­å®šã‚³ãƒãƒ³ãƒ‰
 @bot.command(name="zunda")
 async def zunda_command(ctx, action=None):
     if action == "notify":
         if ctx.message.content.split()[-1].lower() == "off":
             bot.notify_enabled = False
-            await safe_send(ctx.channel, "‚¸‚ñ‚¾‚à‚ñA’Ê’m‚ğƒIƒt‚É‚µ‚½‚Ì‚¾IÃ‚©‚É‚·‚é‚Ì‚¾‚æI")
+            await safe_send(ctx.channel, "ãšã‚“ã ã‚‚ã‚“ã€é€šçŸ¥ã‚’ã‚ªãƒ•ã«ã—ãŸã®ã ï¼é™ã‹ã«ã™ã‚‹ã®ã ã‚ˆï¼")
         elif ctx.message.content.split()[-1].lower() == "on":
             bot.notify_enabled = True
-            await safe_send(ctx.channel, "‚¸‚ñ‚¾‚à‚ñA’Ê’m‚ğƒIƒ“‚É‚µ‚½‚Ì‚¾IŒ³‹C‚É“š‚¦‚é‚Ì‚¾‚æI")
+            await safe_send(ctx.channel, "ãšã‚“ã ã‚‚ã‚“ã€é€šçŸ¥ã‚’ã‚ªãƒ³ã«ã—ãŸã®ã ï¼å…ƒæ°—ã«ç­”ãˆã‚‹ã®ã ã‚ˆï¼")
         else:
-            await safe_send(ctx.channel, "‚¸‚ñ‚¾‚à‚ñAu!zunda notify onv‚©u!zunda notify offv‚Åİ’è‚Å‚«‚é‚Ì‚¾‚æI")
+            await safe_send(ctx.channel, "ãšã‚“ã ã‚‚ã‚“ã€ã€Œ!zunda notify onã€ã‹ã€Œ!zunda notify offã€ã§è¨­å®šã§ãã‚‹ã®ã ã‚ˆï¼")
     elif action == "start":
-        await safe_send(ctx.channel, "‚¸‚ñ‚¾‚à‚ñA‹N“®‚µ‚½‚Ì‚¾Iu‚¸‚ñ‚¾‚à‚ñv‚ÆŒÄ‚Ñ‚©‚¯‚Ä‚¨‚µ‚á‚×‚è‚µ‚æ‚¤‚ËI")
+        await safe_send(ctx.channel, "ãšã‚“ã ã‚‚ã‚“ã€èµ·å‹•ã—ãŸã®ã ï¼ã€Œãšã‚“ã ã‚‚ã‚“ã€ã¨å‘¼ã³ã‹ã‘ã¦ãŠã—ã‚ƒã¹ã‚Šã—ã‚ˆã†ã­ï¼")
     else:
-        await safe_send(ctx.channel, "‚¸‚ñ‚¾‚à‚ñAu!zunda startv‚Ü‚½‚Íu!zunda notify on/offv‚Å‘€ì‚Å‚«‚é‚Ì‚¾‚æI")
+        await safe_send(ctx.channel, "ãšã‚“ã ã‚‚ã‚“ã€ã€Œ!zunda startã€ã¾ãŸã¯ã€Œ!zunda notify on/offã€ã§æ“ä½œã§ãã‚‹ã®ã ã‚ˆï¼")
 
-# ƒ{ƒbƒg‚Ì‹N“®
+# ãƒœãƒƒãƒˆã®èµ·å‹•
 if __name__ == "__main__":
     if not all([TOKEN, CHANNEL_ID, DEEPSEEK_API_KEY]):
-        raise ValueError("ŠÂ‹«•Ï”iTOKEN, CHANNEL_ID, DEEPSEEK_API_KEYj‚ªİ’è‚³‚ê‚Ä‚¢‚È‚¢‚Ì‚¾IReplit‚ÌSecrets‚Åİ’è‚µ‚Ä‚Ù‚µ‚¢‚Ì‚¾‚æI")
+        raise ValueError("ç’°å¢ƒå¤‰æ•°ï¼ˆTOKEN, CHANNEL_ID, DEEPSEEK_API_KEYï¼‰ãŒè¨­å®šã•ã‚Œã¦ã„ãªã„ã®ã ï¼Replitã®Secretsã§è¨­å®šã—ã¦ã»ã—ã„ã®ã ã‚ˆï¼")
     bot.run(TOKEN)
