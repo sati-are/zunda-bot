@@ -1,54 +1,116 @@
-# ���񂾂���Bot �Z�b�g�A�b�v�ƃe�X�g�菇
+# ずんだもんBot セットアップとテスト手順
 
-## �����������
-- �C���^�[�l�b�g�ڑ��A�p�\�R���ADiscord�A�J�E���g�AReplit�A�J�E���g�B
+## 準備するもの
+- インターネット接続、パソコン、Discordアカウント、Replitアカウント。
 
-## �Z�b�g�A�b�v�菇
-1. **Replit�A�J�E���g���쐬**:
-   - [https://replit.com](https://replit.com) �ɃA�N�Z�X���A�����o�^�B
-2. **Replit�v���W�F�N�g���쐬**:
-   - �_�b�V���{�[�h�Łu+ New Repl�v���N���b�N�B
-   - ������uPython�v�ɐݒ肵�A���O���uzunda-bot�v�Ɠ��́B
-3. **�R�[�h��ǉ�**:
-   - `main.py`��`zunda_bot.py`�̓��e���R�s�[���y�[�X�g�B
-4. **�ˑ����C�u�������C���X�g�[��**:
-   - �V�F���ňȉ������s�F`pip install discord.py openrouter transformers tiktoken bitsandbytes`
-5. **���ϐ���ݒ�**:
-   - Replit�́uSecrets�v�^�u�ňȉ���ݒ�F
-     - `TOKEN`: Discord Bot�g�[�N���B
-     - `CHANNEL_ID`: ����`�����l��ID�i�����j�B
-     - `DEEPSEEK_API_KEY`: DeepSeek API�L�[�B
-6. **�R�[�h�����s**:
-   - Replit�́uRun�v�{�^�����N���b�N�B
+## セットアップ手順
+1. **Replitアカウントを作成**:
+   - [https://replit.com](https://replit.com) にアクセスし、無料登録。
+   - メールアドレスまたはGoogleアカウントでログイン。
 
-## �e�X�g�菇
-- **�ʏ�g�p�i1�b�ҋ@�j**:
-  - `!zunda start`�ŋN����A�u���񂾂���v�ƃ`���b�g�ɏ����Ď���i��: �u���񂾂���A���C�H�v�j�B
-  - �ʏ��1�b�ȓ��ɓ��k�قŉ������Ԃ�͂��B�������y���ɓ��삷�邩�m�F�B
-- **�����Ȏg�p�i30�b�ҋ@�j**:
-  - 1�b�ȓ���5��ȏ�܂���1���ȓ���5��ȏ㎿��𑗂�A���[�g�������������邩�m�F�B
-  - �u���񂾂���A������Ƒ��Z������������̂��c1���҂��Ăق����̂���I�v�Ƃ������b�Z�[�W���\������A30�b�ҋ@�㉞�����Ԃ邩�m�F�B
-- **�ʒm�I�v�V����**:
-  - `!zunda notify off`�Œʒm���I�t�ɂ��A�ʒm���b�Z�[�W���\������Ȃ����m�F�B
-  - `!zunda notify on`�Œʒm���I���ɖ߂��A�ʏ�̒ʒm���������邩�m�F�B
-- **�G���[���O�m�F**:
-  - �Ӑ}�I�ɃG���[�𔭐��i��: API�L�[�̖������j���A`error_logs.txt`�Ƀ^�C���X�^���v�t���ŃG���[���L�^����Ă��邩�m�F�B
-- **�g�[�N�������m�F**:
-  - �g�[�N���g�p�ʁi7,500�g�[�N��/���j�𒴂���܂Ŏ�����J��Ԃ��A�u���񂾂���A�����͈�����撣��������K���ɓ�����̂��c�v�Ƃ������b�Z�[�W���\������AMixtral 8x7B�Ōy�ʉ������Ԃ邩�m�F�B
-  - 24���ԑҋ@��A�ʏ��DeepSeek R1�������������邩�m�F�B
+2. **Replitプロジェクトを作成**:
+   - Replitダッシュボードで「+ New Repl」をクリック。
+   - 言語を「Python」に設定し、名前を「zunda-bot」と入力。
+   - テンプレートは「Blank Repl」を選択。
 
-## ���ӓ_
-- Replit�̖����g�iCPU�A512MB RAM�j�œ��삷�邽�߁A���ׂ������ꍇ�������x������\������B
-- Discord�̃��[�g�����i50���N�G�X�g/�b�A10,000���N�G�X�g/10���j�ɒ��ӂ��A�R�[�h��`safe_send()`�őΉ��B
-- API�L�[��g�[�N���͈��S�ɊǗ��iReplit Secrets����ϐ����g�p�j�B
+3. **コードを追加**:
+   - `main.py`に`zunda_bot.py`の内容をコピー＆ペースト。
+   - コードは[GitHubリポジトリ](https://github.com/yourusername/zunda-bot)からダウンロード可能。
 
-## �g���u���V���[�e�B���O
-- **�G���[: 404 Not Found**:
-  - Discord�`�����l��ID��Bot�g�[�N�������������m�F�BReplit��Secrets���Ċm�F�B
-- **�G���[: 429 Too Many Requests**:
-  - ���[�g�������������Ă��邽�߁A1���ҋ@��Ď��s�B�R�[�h��`safe_send()`�Ŏ����Ή��ς݁B
-- **�G���[: API�L�[������**:
-  - DeepSeek API�L�[�����������m�F�BReplit Secrets���X�V�B
+4. **依存ライブラリをインストール**:
+   - Replitのシェル（右下の「Shell」タブ）で以下を実行：
+     ```
+     pip install discord.py openrouter transformers tiktoken bitsandbytes
+     ```
+   - インストールが完了するまで数分かかる場合がある。
 
-## ���C�Z���X
-MIT���C�Z���X�i�ύX�\�j�B
+5. **環境変数を設定**:
+   - Replitの「Secrets」タブにアクセス（左サイドバーから「Secrets」をクリック）。
+   - 以下の環境変数を追加：
+     - `TOKEN`: Discord Botのトークン（後述の「Discord Botトークンの取得」で取得）。
+     - `CHANNEL_ID`: ずんだもんBotを利用したいDiscordチャンネルのID（後述の「チャンネルIDの取得」で取得）。
+     - `DEEPSEEK_API_KEY`: DeepSeek R1のAPIキー（[DeepSeek公式サイト](https://deepseek.com)から取得）。
+   - 各値を入力し、「Add New Secret」をクリック。
+
+6. **コードを実行**:
+   - Replitの「Run」ボタンをクリックして、ずんだもんBotを起動。
+   - コンソールに「Bot is ready!」またはエラーメッセージが表示される。
+
+## Discord Botトークンの取得
+1. **Discord Developer Portalにアクセス**:
+   - [Discord Developer Portal](https://discord.com/developers/applications) にログイン。
+   - 「New Application」をクリックし、アプリケーション名（例: 「ZundaBot」）を入力。
+
+2. **Botを作成**:
+   - アプリケーションページで「Bot」をクリック。
+   - 「Add Bot」をクリックし、「Yes, do it!」で確認。
+   - Botのトークンを表示（「Reset Token」で新しいトークンを生成可能）。
+   - トークンをコピーし、ReplitのSecretsで`TOKEN`に設定（トークンは他人に公開しないでください）。
+
+3. **Botをサーバーに招待**:
+   - アプリケーションページの「OAuth2」→「URL Generator」をクリック。
+   - 「Bot」スコープと「Send Messages」「Read Message History」の権限を選択。
+   - 生成されたURLをコピーし、ブラウザで開いてBotをDiscordサーバーに招待。
+   - 特定チャンネル（`CHANNEL_ID`で指定）にBotを追加。
+
+## チャンネルIDの取得
+1. Discordサーバーの右クリックメニューから「サーバー設定」→「ウィジェット」を開く。
+2. チャンネル名を右クリックし、「コピーID」を選択（デベロッパーモードを有効にする必要あり）。
+3. コピーしたIDをReplitのSecretsで`CHANNEL_ID`に整数形式で設定。
+
+## Discordでの利用方法
+1. **Botの起動確認**:
+   - Replitで`zunda_bot.py`を実行し、DiscordチャンネルでBotがオンライン（緑の丸印）になっているか確認。
+   - コンソールに「Bot is ready!」と表示されれば、正常に起動。
+
+2. **基本的な利用**:
+   - 特定チャンネルで`!zunda start`と入力して、ずんだもんBotを起動。
+   - 「ずんだもん」とチャットに書いて質問（例: 「ずんだもん、元気？」）。
+   - ずんだもんが東北弁で「ぼく、元気いっぱいなのだ！」のように応答。
+
+3. **通知の管理**:
+   - 通知がうるさい場合、`!zunda notify off`でオフに。
+   - 通知を復元したい場合、`!zunda notify on`でオンに。
+
+4. **フィードバックの送信（オプション）**:
+   - 応答に満足できない場合、`!zunda feedback 悪い [コメント]`（例: `!zunda feedback 悪い 語尾が違うのだ`）。
+   - 良い応答の場合は、`!zunda feedback 良い [コメント]`（例: `!zunda feedback 良い すごく可愛い応答だったのだ`）。
+
+## テスト手順
+- **通常使用（1秒待機）**:
+  - `!zunda start`で起動後、「ずんだもん」とチャットに書いて質問（例: 「ずんだもん、元気？」）。
+  - 通常は1秒以内に東北弁で応答が返るはず。処理が軽快に動作するか確認。
+- **活発な使用（30秒待機）**:
+  - 1秒以内に5回以上または1分以内に5回以上質問を送り、レート制限が発動するか確認。
+  - 「ぼく、ずんだもん、ちょっと多忙すぎちゃったのだ…1分待ってほしいのだよ！」というメッセージが表示され、30秒待機後応答が返るか確認。
+- **通知オプション**:
+  - `!zunda notify off`で通知をオフにし、通知メッセージが表示されないか確認。
+  - `!zunda notify on`で通知をオンに戻し、通常の通知が復元するか確認。
+- **エラーログ確認**:
+  - 意図的にエラーを発生（例: APIキーの無効化）し、`error_logs.txt`にタイムスタンプ付きでエラーが記録されているか確認。
+- **トークン制限確認**:
+  - トークン使用量（7,500トークン/日）を超えるまで質問を繰り返し、「ぼく、ずんだもん、今日は一日中頑張ったから適当に答えるのだ…」というメッセージが表示され、Mixtral 8x7Bで軽量応答が返るか確認。
+  - 24時間待機後、通常のDeepSeek R1応答が復元するか確認。
+
+## 注意点
+- **Replitの無料枠**:
+  - Replit無料枠（CPU、512MB RAM）で動作するため、負荷が高い場合処理が遅延する可能性あり。
+- **Discordのレート制限**:
+  - 50リクエスト/秒、10,000リクエスト/10分の制限に対応し、コードの`safe_send()`で自動待機（1秒/30秒）。
+- **APIキーとトークンの管理**:
+  - `TOKEN`と`DEEPSEEK_API_KEY`は安全に管理（Replit Secretsや環境変数を使用）。他人に公開しないでください。
+- **トークン制限**:
+  - DeepSeek R1の7,500トークン/日制限を超えると、24時間待機が必要。活発な使用には注意。
+
+## トラブルシューティング
+- **エラー: 404 Not Found**:
+  - DiscordチャンネルIDやBotトークンが正しいか確認。ReplitのSecretsを再確認。
+- **エラー: 429 Too Many Requests**:
+  - レート制限が発動しているため、1分待機後再試行。コードの`safe_send()`で自動対応済み。
+- **エラー: APIキーが無効**:
+  - DeepSeek APIキーが正しいか確認。Replit Secretsを更新。
+- **エラー: メモリ不足**:
+  - Replit無料枠のメモリ（512MB）を超えた場合、ログサイズを減らす（`MAX_SIZE`を調整）。
+
+## ライセンス
+MITライセンス（変更可能）。
