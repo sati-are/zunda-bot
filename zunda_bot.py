@@ -144,7 +144,7 @@ async def safe_send(channel, message):
     except discord.errors.HTTPException as e:
         if e.status == 429:  # レート制限エラー
             if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-                await channel.send("ずんだもん、ちょっと多忙すぎちゃったのだ…1分待ってほしいのだよ！")
+                await channel.send("ずんだもん、ちょっと多忙すぎちゃったのだ…1分待ってほしいのだ！")
             await asyncio.sleep(60)  # 60秒待機して再試行
             await channel.send(message)
         else:
@@ -170,7 +170,7 @@ async def manage_summary(channel):
 
     if os.path.exists(log_file) and os.path.getsize(log_file) > MAX_SIZE and not is_rate_limited:
         if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-            await safe_send(channel, "ずんだもん、過去の記憶を整理してるのだ…少し待ってほしいのだよ！")
+            await safe_send(channel, "ずんだもん、過去の記憶を整理してるのだ…少し待ってほしいのだ！")
         with open(log_file, "r", encoding="utf-8") as f:
             new_logs = f.read()
         try:
@@ -192,14 +192,14 @@ async def manage_summary(channel):
             summary = response.choices[0].reasoning_content
             used_tokens += token_count + 1
             if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-                await safe_send(channel, "ずんだもん、記憶を整理したのだ！これでスッキリしたのだよ！")
+                await safe_send(channel, "ずんだもん、記憶を整理したのだ！これでスッキリしたのだ！")
 
         except (openrouter.OpenRouterException, requests.RequestException, TimeoutError) as e:
             error_msg = f"{datetime.datetime.now()} | エラー: {str(e)}\n{traceback.format_exc()}\n"
             with open("error_logs.txt", "a", encoding="utf-8") as f:
                 f.write(error_msg)
             if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-                await safe_send(channel, "ずんだもん、サーバーが疲れちゃったのだ…。24時間待ってから続きをするのだよ！")
+                await safe_send(channel, "ずんだもん、サーバーが疲れちゃったのだ…。24時間待ってから続きをするのだ！")
             return
 
         if os.path.exists(summary_file):
@@ -211,7 +211,7 @@ async def manage_summary(channel):
         open(log_file, "w").close()
         if bot.first_summary:
             if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-                await safe_send(channel, "ずんだもん、過去の記憶がおぼろげになったのだ…。たくさんおしゃべりしたから、ちょっとまとめたのだよ！")
+                await safe_send(channel, "ずんだもん、過去の記憶がおぼろげになったのだ…。たくさんおしゃべりしたから、ちょっとまとめたのだ！")
             bot.first_summary = False
 
 # 仮要約管理
@@ -224,7 +224,7 @@ async def manage_temporary_summary(channel):
 
     if os.path.exists(log_file) and os.path.getsize(log_file) > MAX_SIZE / 2 and is_rate_limited:
         if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-            await safe_send(channel, "ずんだもん、過去の記憶を軽く整理してるのだ…少し待ってほしいのだよ！")
+            await safe_send(channel, "ずんだもん、過去の記憶を軽く整理してるのだ…少し待ってほしいのだ！")
         with open(log_file, "r", encoding="utf-8") as f:
             new_logs = f.read()
         try:
@@ -237,7 +237,7 @@ async def manage_temporary_summary(channel):
                 f.write(summary)
             open(log_file, "w").close()
             if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-                await safe_send(channel, "ずんだもん、記憶を軽く整理したのだ！これで少しスッキリしたのだよ！")
+                await safe_send(channel, "ずんだもん、記憶を軽く整理したのだ！これで少しスッキリしたのだ！")
 
 # 仮要約使用後にクリア
             with open(temp_summary_file, "w", encoding="utf-8") as f:
@@ -248,7 +248,7 @@ async def manage_temporary_summary(channel):
             with open("error_logs.txt", "a", encoding="utf-8") as f:
                 f.write(error_msg)
             if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-                await safe_send(channel, "ずんだもん、ちょっとミスっちゃったのだ…24時間待ってから続きをするのだよ！")
+                await safe_send(channel, "ずんだもん、ちょっとミスっちゃったのだ…24時間待ってから続きをするのだ！")
 
 # メッセージ処理
 @bot.event
@@ -270,7 +270,7 @@ async def on_message(message):
     if message.content.startswith("ずんだもん"):
         question = message.content.replace("ずんだもん", "").strip()
         if not question:
-            await safe_send(message.channel, "ずんだもん、何を聞きたいのだ？もう一度教えてほしいのだよ！")
+            await safe_send(message.channel, "ずんだもん、何を聞きたいのだ？もう一度教えてほしいのだ！")
             return
 
         try:
@@ -291,7 +291,7 @@ async def on_message(message):
             with open("error_logs.txt", "a", encoding="utf-8") as f:
                 f.write(error_msg)
             if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-                await safe_send(message.channel, "ずんだもん、サーバーが疲れちゃったのだ…24時間待ってから続きをするのだよ！")
+                await safe_send(message.channel, "ずんだもん、サーバーが疲れちゃったのだ…24時間待ってから続きをするのだ！")
         finally:
             await processing_queue.get()
             await processing_queue.task_done()
@@ -302,19 +302,19 @@ async def zunda_command(ctx, action=None):
     if action == "notify":
         if ctx.message.content.split()[-1].lower() == "off":
             bot.notify_enabled = False
-            await safe_send(ctx.channel, "ずんだもん、通知をオフにしたのだ！静かにするのだよ！")
+            await safe_send(ctx.channel, "ずんだもん、通知をオフにしたのだ！静かにするのだ！")
         elif ctx.message.content.split()[-1].lower() == "on":
             bot.notify_enabled = True
-            await safe_send(ctx.channel, "ずんだもん、通知をオンにしたのだ！元気に答えるのだよ！")
+            await safe_send(ctx.channel, "ずんだもん、通知をオンにしたのだ！元気に答えるのだ！")
         else:
-            await safe_send(ctx.channel, "ずんだもん、「!zunda notify on」か「!zunda notify off」で設定できるのだよ！")
+            await safe_send(ctx.channel, "ずんだもん、「!zunda notify on」か「!zunda notify off」で設定できるのだ！")
     elif action == "start":
         await safe_send(ctx.channel, "ずんだもん、起動したのだ！「ずんだもん」と呼びかけておしゃべりしようね！")
     else:
-        await safe_send(ctx.channel, "ずんだもん、「!zunda start」または「!zunda notify on/off」で操作できるのだよ！")
+        await safe_send(ctx.channel, "ずんだもん、「!zunda start」または「!zunda notify on/off」で操作できるのだ！")
 
 # ボットの起動
 if __name__ == "__main__":
     if not all([TOKEN, CHANNEL_ID, DEEPSEEK_API_KEY]):
-        raise ValueError("環境変数（TOKEN, CHANNEL_ID, DEEPSEEK_API_KEY）が設定されていないのだ！ReplitのSecretsで設定してほしいのだよ！")
+        raise ValueError("環境変数（TOKEN, CHANNEL_ID, DEEPSEEK_API_KEY）が設定されていないのだ！ReplitのSecretsで設定してほしいのだ！")
     bot.run(TOKEN)
