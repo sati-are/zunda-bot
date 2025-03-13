@@ -9,6 +9,11 @@ import asyncio
 import requests
 import traceback
 
+from transformers import AutoModelForCausalLM  # 追加
+import schedule
+import time
+import torch
+
 # ボットの設定
 bot = commands.Bot(command_prefix="!")  # コマンドプレフィックスを「!」に設定
 processing_queue = asyncio.Queue(maxsize=3)  # 同時リクエストを3件に制限
@@ -28,7 +33,7 @@ DEEPSEEK_TIMEOUT = 60  # DeepSeek APIのタイムアウト（秒）
 
 # Mixtral 8x7Bの8-bit量子化設定
 quantization_config = BitsAndBytesConfig(load_in_8bit=True)
-summarizer_fallback = pipeline("text-generation", model="meta-llama/Mixtral-8x7B", device=0 if torch.cuda.is_available() else -1, quantization_config=quantization_config)
+summarizer_fallback = pipeline("text-generation", model="meta-llama/Mixtral-8x7B", device=-1, quantization_config=quantization_config)
 tokenizer_mixtral = AutoTokenizer.from_pretrained("meta-llama/Mixtral-8x7B")
 
 # 東北弁のプロンプト
@@ -46,6 +51,41 @@ def check_token_reset():
     if current_time.hour == 0 and current_time.minute == 0:  # UTC 0:00
         used_tokens = 0
         is_rate_limited = False
+
+# グローバル変数としてモデルとトークナイザーを定義
+model = None
+tokenizer = None
+
+def initialize_model():
+    global model, tokenizer
+    try:
+        # 8-bit量子化/オフロードを試す
+        quantization_config = BitsAndBytesConfig(load_in_8bit=True)
+        model = AutoModelForCausalLM.from_pretrained(
+            "meta-llama/Mixtral-8x7B",
+            device_map="cpu",
+            quantization_config=quantization_config,
+            offload_folder="offload",
+            trust_remote_code=True
+        )
+        tokenizer = AutoTokenizer.from_pretrained("meta-llama/Mixtral-8x7B")
+    except MemoryError:
+        print("Memory error occurred. Falling back to 4-bit quantization with offload.")
+        # 4-bit量子化/オフロードに切り替え
+        quantization_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_compute_type="float16",
+            bnb_4bit_use_double_quant=True,
+            offload_folder="offload"
+        )
+        model = AutoModelForCausalLM.from_pretrained(
+            "meta-llama/Mixtral-8x7B",
+            device_map="cpu",
+            quantization_config=quantization_config,
+            trust_remote_code=True
+        )
+        tokenizer = AutoTokenizer.from_pretrained("meta-llama/Mixtral-8x7B")
+
 
 # 応答生成（DeepSeek R1またはMixtral 8x7B）
 def get_response(question, logs):
@@ -198,6 +238,11 @@ async def manage_temporary_summary(channel):
             open(log_file, "w").close()
             if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
                 await safe_send(channel, "ずんだもん、記憶を軽く整理したのだ！これで少しスッキリしたのだよ！")
+
+# 仮要約使用後にクリア
+            with open(temp_summary_file, "w", encoding="utf-8") as f:
+                f.write("")  # クリア
+
         except Exception as e:
             error_msg = f"{datetime.datetime.now()} | エラー: {str(e)}\n{traceback.format_exc()}\n"
             with open("error_logs.txt", "a", encoding="utf-8") as f:
@@ -207,6 +252,13 @@ async def manage_temporary_summary(channel):
 
 # メッセージ処理
 @bot.event
+async def on_ready():
+    print(f"{bot.user}としてログインしました！")
+    schedule.every().day.at("00:00").do(lambda: os.system("rm -rf /root/.cache/huggingface"))
+    while True:
+        schedule.run_pending()
+        await asyncio.sleep(60)
+
 async def on_message(message):
     if message.author == bot.user or message.channel.id != CHANNEL_ID:
         return
