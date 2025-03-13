@@ -64,6 +64,9 @@
   - `transformers`（Mixtral 8x7Bロード）。
   - `tiktoken`（トークンカウント）。
   - `bitsandbytes`（Mixtral 8x7Bの8-bit量子化）。
+  - `schedule`（キャッシュクリアのスケジュールタスク）。
+  - `torch`（transformersのpipelineおよびモデルロードに必要、CPU版）。
+
 - **設定**:
   - 環境変数（`TOKEN`, `CHANNEL_ID`, `DEEPSEEK_API_KEY`）をReplit Secretsで管理。
 
