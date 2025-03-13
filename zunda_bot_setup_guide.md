@@ -20,7 +20,7 @@
 4. **依存ライブラリをインストール**:
    - Replitのシェル（右下の「Shell」タブ）で以下を実行：
      ```
-     pip install discord.py openrouter transformers tiktoken bitsandbytes
+     pip install discord.py openrouter transformers tiktoken bitsandbytes schedule torch --no-cache-dir
      ```
    - インストールが完了するまで数分かかる場合がある。
 
