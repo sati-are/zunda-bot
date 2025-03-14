@@ -3,41 +3,36 @@ from discord.ext import commands
 import os
 import datetime
 import openrouter
-from transformers import pipeline, BitsAndBytesConfig, AutoTokenizer
 import tiktoken
 import asyncio
 import requests
-import traceback
-
-from transformers import AutoModelForCausalLM  # 追加
-import schedule
-import time
-import torch
 
 # ボットの設定
 bot = commands.Bot(command_prefix="!")  # コマンドプレフィックスを「!」に設定
 processing_queue = asyncio.Queue(maxsize=3)  # 同時リクエストを3件に制限
-bot.notify_enabled = True  # 通知デフォルトオン
 send_count = {}  # チャンネルごとの送信回数とタイムスタンプ
 used_tokens = 0  # トークン使用量の追跡
 is_rate_limited = False  # レート制限状態
 bot.first_summary = True  # 初回要約フラグ
+bot.notify_enabled = True  # 通知デフォルトオン
 
 # 環境変数から設定を読み込む
 TOKEN = os.getenv("TOKEN")  # Discord Botトークン
 CHANNEL_ID = int(os.getenv("CHANNEL_ID"))  # 特定チャンネルID
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")  # DeepSeek APIキー
-DAILY_TOKEN_LIMIT = 7500  # デフォルトのトークン上限（DeepSeek R1）
+HF_API_KEY = os.getenv("HF_API_KEY")  # Hugging Face APIキー
+DAILY_TOKEN_LIMIT = 7500  # DeepSeek R1のトークン上限（7,500トークン/日）
 MAX_SIZE = 20 * 1024  # 20KBでログを要約
 DEEPSEEK_TIMEOUT = 60  # DeepSeek APIのタイムアウト（秒）
 
-# Mixtral 8x7Bの8-bit量子化設定
-quantization_config = BitsAndBytesConfig(load_in_8bit=True)
-summarizer_fallback = pipeline("text-generation", model="meta-llama/Mixtral-8x7B", device=-1, quantization_config=quantization_config)
-tokenizer_mixtral = AutoTokenizer.from_pretrained("meta-llama/Mixtral-8x7B")
-
 # 東北弁のプロンプト
-zunda_prompt = "ぼく、ずんだもんは東北弁で可愛く、元気いっぱいで答えるAIチャットBotなのだ。全ての答えを一人称「ぼく」で、語尾を「～のだ」か「～なのだ」に必ずして、敬語を使わず、楽しく明るく話すのだ。"
+zunda_base = (
+    "ずんだもんは東北弁で可愛く、元気いっぱいで答えるAIチャットBotなのだ。\n"
+    "全ての答えを一人称「ぼく」で、語尾を「～のだ」か「～なのだ」に必ずして、敬語を使わず、楽しく明るく話すのだ。"
+)
+
+normal_instruction = "質問への回答を最大130トークン以内で簡潔に答えるのだ。\n必要に応じて推論を加えて答えるのだ。\n長くなりそうな場合は「続きがあるのでもう一度話しかけてほしいのだ！」と付けるのだ。\n回答外は削除して、純粋な回答だけにするのだ。"
+long_instruction = "質問への回答を最大2000トークン以内で詳しく答えるのだ。\n必要に応じて推論を加えて答えるのだ。\n長くなりそうな場合は「続きがあるのでもう一度話しかけてほしいのだ！」と付けるのだ。\n回答外は削除して、純粋な回答だけにするのだ。"
 
 # トークンカウント関数
 def get_token_count(text):
@@ -52,66 +47,88 @@ def check_token_reset():
         used_tokens = 0
         is_rate_limited = False
 
-# グローバル変数としてモデルとトークナイザーを定義
-model = None
-tokenizer = None
+# 応答モードの判定
+def get_response_mode(question):
+    question_lower = question.lower()
+    long_triggers = ["長文", "詳細", "詳しく"]
+    if any(trigger in question_lower for trigger in long_triggers):
+        return "long", 2000, long_instruction
+    return "normal", 130, normal_instruction
 
-def initialize_model():
-    global model, tokenizer
+# Hugging Face APIで応答生成（推論部分を除去）
+def get_hf_response(prompt, max_tokens):
+    url = "https://api-inference.huggingface.co/models/mixtral-8x7b"  # モデルは必要に応じて更新
+    headers = {
+        "Authorization": f"Bearer {HF_API_KEY}",
+        "Content-Type": "application/json",
+    }
+    data = {
+        "inputs": prompt,
+        "parameters": {"max_length": max_tokens, "temperature": 0.7, "top_p": 0.9},
+    }
     try:
-        # 8-bit量子化/オフロードを試す
-        quantization_config = BitsAndBytesConfig(load_in_8bit=True)
-        model = AutoModelForCausalLM.from_pretrained(
-            "meta-llama/Mixtral-8x7B",
-            device_map="cpu",
-            quantization_config=quantization_config,
-            offload_folder="offload",
-            trust_remote_code=True
-        )
-        tokenizer = AutoTokenizer.from_pretrained("meta-llama/Mixtral-8x7B")
-    except MemoryError:
-        print("Memory error occurred. Falling back to 4-bit quantization with offload.")
-        # 4-bit量子化/オフロードに切り替え
-        quantization_config = BitsAndBytesConfig(
-            load_in_4bit=True,
-            bnb_4bit_compute_type="float16",
-            bnb_4bit_use_double_quant=True,
-            offload_folder="offload"
-        )
-        model = AutoModelForCausalLM.from_pretrained(
-            "meta-llama/Mixtral-8x7B",
-            device_map="cpu",
-            quantization_config=quantization_config,
-            trust_remote_code=True
-        )
-        tokenizer = AutoTokenizer.from_pretrained("meta-llama/Mixtral-8x7B")
+        response = requests.post(url, headers=headers, json=data, timeout=15)
+        response.raise_for_status()
+        raw_text = response.json()[0]["generated_text"] if response.json() else "サーバーが疲れちゃったのだ…24時間待ってから続きをするのだ！"
+        
+        # プロンプトと推論部分を除去
+        if raw_text.startswith(prompt):
+            raw_text = raw_text[len(prompt):].strip()
+        if "推論：" in raw_text:
+            raw_text = raw_text.split("推論：", 1)[1].strip()
 
+        token_count = get_token_count(raw_text)
+        if token_count > max_tokens:
+            encoding = tiktoken.get_encoding("cl100k_base")
+            tokens = encoding.encode(raw_text)[:max_tokens]
+            trimmed_text = encoding.decode(tokens).rsplit(" ", 1)[0]  # 末尾でトリミング
+            return f"{trimmed_text}…\n続きがあるのでもう一度話しかけてほしいのだ！"
+        return raw_text
+    except Exception as e:
+        error_msg = f"{datetime.datetime.now()} | HF APIエラー: {str(e)}\n"
+        with open("error_logs.txt", "a", encoding="utf-8") as f:
+            f.write(error_msg)
+        return "サーバーが疲れちゃったのだ…24時間待ってから続きをするのだ！"
 
-# 応答生成（DeepSeek R1またはMixtral 8x7B）
+# 応答生成（DeepSeek R1で推論、Hugging Faceで応答）
 def get_response(question, logs):
     global used_tokens, is_rate_limited
     check_token_reset()
 
-    if is_rate_limited:
-        return summarizer_fallback(f"東北弁で可愛く答えるのだ：{question}", max_length=50, do_sample=True)[0]['generated_text']
+    # DeepSeek R1で推論を取得（max_tokens=1でreasoning_contentのみ）
+    reasoning = ""
+    if not is_rate_limited:
+        try:
+            client = openrouter.OpenRouter(api_key=DEEPSEEK_API_KEY)
+            response = client.completions.create(
+                model="deepseek/deepseek-r1",
+                prompt=f"{zunda_base}\nログ：{logs}\n質問：{question}",
+                max_tokens=1,  # 最終回答は1トークン、推論（reasoning_content）のみ取得
+                response_format={"type": "json", "reasoning_content": True},
+                timeout=DEEPSEEK_TIMEOUT
+            )
+            token_count = get_token_count(question + logs)
+            if used_tokens + token_count > DAILY_TOKEN_LIMIT:
+                is_rate_limited = True
+            else:
+                used_tokens += token_count + 1
+                reasoning = response.choices[0].reasoning_content
+                print(f"DeepSeek R1推論: {reasoning}")  # デバッグ用
+        except Exception as e:
+            print(f"DeepSeek R1エラー: {str(e)}")
+            reasoning = ""
 
-    try:
-        client = openrouter.OpenRouter(api_key=DEEPSEEK_API_KEY)
-        response = client.completions.create(
-            model="deepseek/deepseek-r1",
-            prompt=f"東北弁で可愛く答えるAIチャットBot（ずんだもん）として、以下のログを考慮して回答：\nログ：{logs}\n質問：{question}",
-            max_tokens=1,  # 最終回答は1トークン
-            response_format={"type": "json", "reasoning_content": True},
-            timeout=DEEPSEEK_TIMEOUT
-        )
-        token_count = get_token_count(question + logs)
-        if used_tokens + token_count > DAILY_TOKEN_LIMIT:
-            is_rate_limited = True
-            return summarizer_fallback(f"東北弁で可愛く答えるのだ：{question}", max_length=50, do_sample=True)[0]['generated_text']
-        used_tokens += token_count + 1
-        return response.choices[0].reasoning_content
-    except (openrouter.OpenRouterException, requests.RequestException, TimeoutError):
-        return summarizer_fallback(f"東北弁で可愛く答えるのだ：{question}", max_length=50, do_sample=True)[0]['generated_text']
+    # 応答モード（通常/長文）を判定
+    mode, max_tokens, mode_instruction = get_response_mode(question)
+    zunda_instruction = (
+        "東北弁で可愛く、元気いっぱいで答えるのだ。\n"
+        "一人称は「ぼく」で、語尾は「～のだ」か「～なのだ」に必ずして、敬語を使わず、楽しく明るく話すのだ。\n"
+        + mode_instruction
+    )
+
+    # Hugging Face APIで最終応答を生成（推論をプロンプトに含める）
+    prompt = f"{zunda_base}\n{zunda_instruction}\n推論：{reasoning}\n質問：{question}"
+    return get_hf_response(prompt, max_tokens)
 
 # 安全なメッセージ送信（レート制限対応）
 async def safe_send(channel, message):
@@ -144,7 +161,7 @@ async def safe_send(channel, message):
     except discord.errors.HTTPException as e:
         if e.status == 429:  # レート制限エラー
             if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-                await channel.send("ずんだもん、ちょっと多忙すぎちゃったのだ…1分待ってほしいのだ！")
+                await channel.send("多忙すぎちゃったのだ…1分待ってほしいのだ！")
             await asyncio.sleep(60)  # 60秒待機して再試行
             await channel.send(message)
         else:
@@ -160,7 +177,7 @@ async def save_logs(channel):
     with open("all_logs.txt", "a", encoding="utf-8") as f:
         f.write(f"{datetime.datetime.now()} | チャンネル: {channel.id} | メッセージ: {channel.last_message.content if channel.last_message else 'なし'}\n")
 
-# 要約管理
+# ログ要約管理（20KBごとにDeepSeek R1で要約）
 async def manage_summary(channel):
     global used_tokens, is_rate_limited
     log_file = "all_logs.txt"
@@ -170,7 +187,7 @@ async def manage_summary(channel):
 
     if os.path.exists(log_file) and os.path.getsize(log_file) > MAX_SIZE and not is_rate_limited:
         if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-            await safe_send(channel, "ずんだもん、過去の記憶を整理してるのだ…少し待ってほしいのだ！")
+            await channel.send("過去の記憶を整理してるのだ…少し待ってほしいのだ！")
         with open(log_file, "r", encoding="utf-8") as f:
             new_logs = f.read()
         try:
@@ -178,7 +195,7 @@ async def manage_summary(channel):
             if used_tokens + token_count > DAILY_TOKEN_LIMIT:
                 is_rate_limited = True
                 if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-                    await safe_send(channel, "ずんだもん、今日は一日中頑張ったから適当に答えるのだ…")
+                    await channel.send("今日は一日中頑張ったから適当に答えるのだ…")
                 return
 
             client = openrouter.OpenRouter(api_key=DEEPSEEK_API_KEY)
@@ -192,29 +209,28 @@ async def manage_summary(channel):
             summary = response.choices[0].reasoning_content
             used_tokens += token_count + 1
             if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-                await safe_send(channel, "ずんだもん、記憶を整理したのだ！これでスッキリしたのだ！")
+                await channel.send("記憶を整理したのだ！これでスッキリしたのだ！")
 
+            if os.path.exists(summary_file):
+                with open(summary_file, "r", encoding="utf-8") as f:
+                    old_summary = f.read()
+                summary = old_summary + "\n" + summary
+            with open(summary_file, "w", encoding="utf-8") as f:
+                f.write(summary)
+            open(log_file, "w").close()
+            if bot.first_summary:
+                if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
+                    await channel.send("過去の記憶がおぼろげになったのだ…。たくさんおしゃべりしたから、ちょっとまとめたのだ！")
+                bot.first_summary = False
         except (openrouter.OpenRouterException, requests.RequestException, TimeoutError) as e:
             error_msg = f"{datetime.datetime.now()} | エラー: {str(e)}\n{traceback.format_exc()}\n"
             with open("error_logs.txt", "a", encoding="utf-8") as f:
                 f.write(error_msg)
             if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-                await safe_send(channel, "ずんだもん、サーバーが疲れちゃったのだ…。24時間待ってから続きをするのだ！")
+                await channel.send("サーバーが疲れちゃったのだ…。24時間待ってから続きをするのだ！")
             return
 
-        if os.path.exists(summary_file):
-            with open(summary_file, "r", encoding="utf-8") as f:
-                old_summary = f.read()
-            summary = old_summary + "\n" + summary
-        with open(summary_file, "w", encoding="utf-8") as f:
-            f.write(summary)
-        open(log_file, "w").close()
-        if bot.first_summary:
-            if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-                await safe_send(channel, "ずんだもん、過去の記憶がおぼろげになったのだ…。たくさんおしゃべりしたから、ちょっとまとめたのだ！")
-            bot.first_summary = False
-
-# 仮要約管理
+# 仮ログ要約管理（10KBごとにMixtral 8x7Bで簡易要約）
 async def manage_temporary_summary(channel):
     global used_tokens, is_rate_limited
     log_file = "all_logs.txt"
@@ -224,11 +240,11 @@ async def manage_temporary_summary(channel):
 
     if os.path.exists(log_file) and os.path.getsize(log_file) > MAX_SIZE / 2 and is_rate_limited:
         if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-            await safe_send(channel, "ずんだもん、過去の記憶を軽く整理してるのだ…少し待ってほしいのだ！")
+            await channel.send("過去の記憶を軽く整理してるのだ…少し待ってほしいのだ！")
         with open(log_file, "r", encoding="utf-8") as f:
             new_logs = f.read()
         try:
-            summary = summarizer_fallback(f"以下のログを東北弁で簡潔に要約して：\n{new_logs}", max_length=100, do_sample=True)[0]['generated_text']
+            summary = get_hf_response(f"以下のログを東北弁で簡潔に要約して：\n{new_logs}", 100)
             if os.path.exists(temp_summary_file):
                 with open(temp_summary_file, "r", encoding="utf-8") as f:
                     old_summary = f.read()
@@ -237,28 +253,27 @@ async def manage_temporary_summary(channel):
                 f.write(summary)
             open(log_file, "w").close()
             if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-                await safe_send(channel, "ずんだもん、記憶を軽く整理したのだ！これで少しスッキリしたのだ！")
+                await channel.send("記憶を軽く整理したのだ！これで少しスッキリしたのだ！")
 
-# 仮要約使用後にクリア
+            # 仮要約使用後にクリア（累積を防ぐ）
             with open(temp_summary_file, "w", encoding="utf-8") as f:
                 f.write("")  # クリア
-
         except Exception as e:
             error_msg = f"{datetime.datetime.now()} | エラー: {str(e)}\n{traceback.format_exc()}\n"
             with open("error_logs.txt", "a", encoding="utf-8") as f:
                 f.write(error_msg)
             if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-                await safe_send(channel, "ずんだもん、ちょっとミスっちゃったのだ…24時間待ってから続きをするのだ！")
+                await channel.send("ちょっとミスっちゃったのだ…24時間待ってから続きをするのだ！")
 
 # メッセージ処理
 @bot.event
 async def on_ready():
-    print(f"{bot.user}としてログインしました！")
-    schedule.every().day.at("00:00").do(lambda: os.system("rm -rf /root/.cache/huggingface"))
+    print(f"{bot.user}としてログインしたのだ！")
     while True:
-        schedule.run_pending()
-        await asyncio.sleep(60)
+        await asyncio.sleep(60)  # 1分ごとにトークンリセットチェック
+        check_token_reset()
 
+@bot.event
 async def on_message(message):
     if message.author == bot.user or message.channel.id != CHANNEL_ID:
         return
@@ -270,7 +285,7 @@ async def on_message(message):
     if message.content.startswith("ずんだもん"):
         question = message.content.replace("ずんだもん", "").strip()
         if not question:
-            await safe_send(message.channel, "ずんだもん、何を聞きたいのだ？もう一度教えてほしいのだ！")
+            await safe_send(message.channel, "何を聞きたいのだ？もう一度教えてほしいのだ！")
             return
 
         try:
@@ -291,30 +306,53 @@ async def on_message(message):
             with open("error_logs.txt", "a", encoding="utf-8") as f:
                 f.write(error_msg)
             if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
-                await safe_send(message.channel, "ずんだもん、サーバーが疲れちゃったのだ…24時間待ってから続きをするのだ！")
+                await safe_send(message.channel, "サーバーが疲れちゃったのだ…24時間待ってから続きをするのだ！")
         finally:
             await processing_queue.get()
             await processing_queue.task_done()
 
-# 通知設定コマンド
+# ボットのコマンド
 @bot.command(name="zunda")
-async def zunda_command(ctx, action=None):
-    if action == "notify":
-        if ctx.message.content.split()[-1].lower() == "off":
-            bot.notify_enabled = False
-            await safe_send(ctx.channel, "ずんだもん、通知をオフにしたのだ！静かにするのだ！")
-        elif ctx.message.content.split()[-1].lower() == "on":
+async def zunda_command(ctx, action=None, *args):
+    if action == "start":
+        await safe_send(ctx.channel, "起動したのだ！「ずんだもん」と呼びかけておしゃべりするのだ！")
+    elif action == "notify":
+        if not args:
+            await safe_send(ctx.channel, "「!zunda notify on」か「!zunda notify off」で設定できるのだ！")
+            return
+        status = args[0].lower()
+        if status == "on":
             bot.notify_enabled = True
-            await safe_send(ctx.channel, "ずんだもん、通知をオンにしたのだ！元気に答えるのだ！")
+            await safe_send(ctx.channel, "通知をオンにしたのだ！")
+        elif status == "off":
+            bot.notify_enabled = False
+            await safe_send(ctx.channel, "通知をオフにしたのだ！")
         else:
-            await safe_send(ctx.channel, "ずんだもん、「!zunda notify on」か「!zunda notify off」で設定できるのだ！")
-    elif action == "start":
-        await safe_send(ctx.channel, "ずんだもん、起動したのだ！「ずんだもん」と呼びかけておしゃべりしようね！")
+            await safe_send(ctx.channel, "「on」か「off」を指定してほしいのだ！")
+    elif action == "reset":
+        # 脳みそリセットの確認
+        await safe_send(ctx.channel, "脳みそをリセットすると過去の記憶が全部消えるのだ…本当にいいのだ？「yes」か「no」で答えてほしいのだ！")
+        def check(m):
+            return m.author == ctx.author and m.channel == ctx.channel and m.content.lower() in ["yes", "no"]
+        try:
+            response = await bot.wait_for("message", check=check, timeout=30.0)
+            if response.content.lower() == "yes":
+                # ログファイルと要約ファイルのクリア
+                for file in ["all_logs.txt", "latest_summary.txt", "temporary_summary.txt"]:
+                    if os.path.exists(file):
+                        open(file, "w").close()
+                bot.first_summary = True
+                if hasattr(bot, 'notify_enabled') and bot.notify_enabled is not False:
+                    await safe_send(ctx.channel, "脳みそが空っぽになっちゃったのだ…新しくおしゃべりするのだ！")
+            else:
+                await safe_send(ctx.channel, "リセットをキャンセルしたのだ！これからも楽しくおしゃべりするのだ！")
+        except asyncio.TimeoutError:
+            await safe_send(ctx.channel, "30秒待っても返事がないのだ…リセットをキャンセルしたのだ！")
     else:
-        await safe_send(ctx.channel, "ずんだもん、「!zunda start」または「!zunda notify on/off」で操作できるのだ！")
+        await safe_send(ctx.channel, "「!zunda start」、「!zunda notify on/off」、「!zunda reset」で操作できるのだ！")
 
 # ボットの起動
 if __name__ == "__main__":
-    if not all([TOKEN, CHANNEL_ID, DEEPSEEK_API_KEY]):
-        raise ValueError("環境変数（TOKEN, CHANNEL_ID, DEEPSEEK_API_KEY）が設定されていないのだ！ReplitのSecretsで設定してほしいのだ！")
+    if not all([TOKEN, CHANNEL_ID, DEEPSEEK_API_KEY, HF_API_KEY]):
+        raise ValueError("環境変数（TOKEN, CHANNEL_ID, DEEPSEEK_API_KEY, HF_API_KEY）が設定されていないのだ！ReplitのSecretsで設定してほしいのだ！")
     bot.run(TOKEN)
