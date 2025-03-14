@@ -1,112 +1,85 @@
 # ずんだもんBot セットアップとテスト手順
 
-## 準備するもの
-- インターネット接続、パソコン、Discordアカウント、Replitアカウント。
+## 1. 準備するもの
+- インターネット接続
+- パソコン（どのOSでもOK）
+- Discordアカウント（[discord.com](https://discord.com)から無料登録）
+- Replitアカウント（[replit.com](https://replit.com)からメールまたはGoogleアカウントで無料登録）
 
-## セットアップ手順
-1. **Replitアカウントを作成**:
-   - [https://replit.com](https://replit.com) にアクセスし、無料登録。
+## 2. Replitでのセットアップ
+### 2.1 Replitアカウントを作成
+- [Replit公式サイト](https://replit.com) にアクセスし、「Sign Up」で無料登録。
    - メールアドレスまたはGoogleアカウントでログイン。
 
-2. **Replitプロジェクトを作成**:
-   - Replitダッシュボードで「+ New Repl」をクリック。
-   - 言語を「Python」に設定し、名前を「zunda-bot」と入力。
-   - テンプレートは「Blank Repl」を選択。
+### 2.2 Replitプロジェクトを作成
+- Replitダッシュボードで「+ New Repl」をクリック。
+- **Language**: 「Python」を選択。
+- **Repl Name**: 「zunda-bot」と入力。
+- **Template**: 「Blank Repl」を選択。
+- 「Create Repl」をクリック。
 
-3. **コードを追加**:
-   - `main.py`に`zunda_bot.py`の内容をコピー＆ペースト。
-   - コードは[GitHubリポジトリ](https://github.com/yourusername/zunda-bot)からダウンロード可能。
+### 2.3 コードをGitHubから追加
+- GitHubリポジトリ（[https://github.com/sati-are/zunda-bot](https://github.com/sati-are/zunda-bot)）にアクセス。
+- `zunda-bot.py`（ずんだもんBotのコード）をダウンロード。
+- Replitのプロジェクト画面で、左サイドバーの「Files」タブを開く。
+- Replitのエディタに`zunda-bot`をドラッグ＆ドロップまたはコピー＆ペーストで追加。
 
-4. **依存ライブラリをインストール**:
-   - Replitのシェル（右下の「Shell」タブ）で以下を実行：
-     ```
-     pip install discord.py openrouter transformers tiktoken bitsandbytes schedule torch --no-cache-dir
-     ```
-   - インストールが完了するまで数分かかる場合がある。
+### 2.4 依存ライブラリをインストール
+- Replitのシェル（右下「Shell」タブ）で以下を実行：
 
-5. **環境変数を設定**:
-   - Replitの「Secrets」タブにアクセス（左サイドバーから「Secrets」をクリック）。
-   - 以下の環境変数を追加：
-     - `TOKEN`: Discord Botのトークン（後述の「Discord Botトークンの取得」で取得）。
-     - `CHANNEL_ID`: ずんだもんBotを利用したいDiscordチャンネルのID（後述の「チャンネルIDの取得」で取得）。
-     - `DEEPSEEK_API_KEY`: DeepSeek R1のAPIキー（[DeepSeek公式サイト](https://deepseek.com)から取得）。
-   - 各値を入力し、「Add New Secret」をクリック。
+  pip install discord.py openrouter tiktoken requests python-dotenv
 
-6. **コードを実行**:
-   - Replitの「Run」ボタンをクリックして、ずんだもんBotを起動。
-   - コンソールに「Bot is ready!」またはエラーメッセージが表示される。
+### 2.5 環境変数を設定
+- Replitの「Secrets」タブ（左サイドバー）をクリック。
+- 以下の環境変数を追加：
+- `TOKEN`: Discord Botのトークン（後で取得）
+- `CHANNEL_ID`: チャンネルID（後で取得）
+- `DEEPSEEK_API_KEY`: DeepSeek APIキー（[DeepSeek公式サイト](https://deepseek.com)から取得）
+- `HF_API_KEY`: Hugging Face APIキー（[Hugging Face Settings](https://huggingface.co/settings/tokens)から取得）
+- 値を入力して「Add New Secret」をクリック。
 
-## Discord Botトークンの取得
-1. **Discord Developer Portalにアクセス**:
-   - [Discord Developer Portal](https://discord.com/developers/applications) にログイン。
-   - 「New Application」をクリックし、アプリケーション名（例: 「ZundaBot」）を入力。
+## 3. Discord Botの設定
+### 3.1 Discord Developer PortalでBotを作成
+- [Discord Developer Portal](https://discord.com/developers/applications) にログイン。
+- 「New Application」をクリックし、名前（例: 「ZundaBot」）を入力。
+- 「Bot」タブで「Add Bot」をクリック。「Yes, do it!」で確認。
+- Botトークンを表示し、Replitの`TOKEN`に設定（他人に公開しないでください）。
 
-2. **Botを作成**:
-   - アプリケーションページで「Bot」をクリック。
-   - 「Add Bot」をクリックし、「Yes, do it!」で確認。
-   - Botのトークンを表示（「Reset Token」で新しいトークンを生成可能）。
-   - トークンをコピーし、ReplitのSecretsで`TOKEN`に設定（トークンは他人に公開しないでください）。
+### 3.2 BotをDiscordサーバーに招待
+- 「OAuth2」→「URL Generator」をクリック。
+- 「Bot」スコープと「Send Messages」「Read Message History」の権限を選択。
+- 生成されたURLをコピーし、ブラウザで開いてBotをサーバーに招待。
 
-3. **Botをサーバーに招待**:
-   - アプリケーションページの「OAuth2」→「URL Generator」をクリック。
-   - 「Bot」スコープと「Send Messages」「Read Message History」の権限を選択。
-   - 生成されたURLをコピーし、ブラウザで開いてBotをDiscordサーバーに招待。
-   - 特定チャンネル（`CHANNEL_ID`で指定）にBotを追加。
+### 3.3 チャンネルIDの取得
+- Discordで、Botを使いたいチャンネルに移動。
+- チャンネル名を右クリックし、「コピーID」（デベロッパーモードをオンに必要）。
+- デベロッパーモードの有効化: 「ユーザー設定」→「外観」→「デベロッパーモード」をオン。
+- コピーしたIDをReplitの`CHANNEL_ID`に整数形式で設定。
 
-## チャンネルIDの取得
-1. Discordサーバーの右クリックメニューから「サーバー設定」→「ウィジェット」を開く。
-2. チャンネル名を右クリックし、「コピーID」を選択（デベロッパーモードを有効にする必要あり）。
-3. コピーしたIDをReplitのSecretsで`CHANNEL_ID`に整数形式で設定。
+## 4. コードの実行とテスト
+- Replitの「Run」ボタンをクリックしてBotを起動。
+- DiscordでBotが緑の丸（オンライン）になり、「!zunda start」で起動。
+- 質問（例: 「ずんだもん、元気？」）を送り、東北弁の応答が返るか確認。
+- 長文モード（「ずんだもん、宇宙について詳しく教えて！」）で「続きがあるので…」が付くかチェック。
 
-## Discordでの利用方法
-1. **Botの起動確認**:
-   - Replitで`zunda_bot.py`を実行し、DiscordチャンネルでBotがオンライン（緑の丸印）になっているか確認。
-   - コンソールに「Bot is ready!」と表示されれば、正常に起動。
+## 5. 注意点
+- Replit無料枠（CPU、512MB RAM）で動作。APIリクエストが遅延する可能性あり。
+- `TOKEN`やAPIキーは他人に教えないでください。
+- DeepSeek R1は7,500トークン/日制限あり、超えると軽量応答になるよ。
 
-2. **基本的な利用**:
-   - 特定チャンネルで`!zunda start`と入力して、ずんだもんBotを起動。
-   - 「ずんだもん」とチャットに書いて質問（例: 「ずんだもん、元気？」）。
-   - ずんだもんが東北弁で「ぼく、元気いっぱいなのだ！」のように応答。
-
-3. **通知の管理**:
-   - 通知がうるさい場合、`!zunda notify off`でオフに。
-   - 通知を復元したい場合、`!zunda notify on`でオンに。
-
-## テスト手順
-- **通常使用（1秒待機）**:
-  - `!zunda start`で起動後、「ずんだもん」とチャットに書いて質問（例: 「ずんだもん、元気？」）。
-  - 通常は1秒以内に東北弁で応答が返るはず。処理が軽快に動作するか確認。
-- **活発な使用（30秒待機）**:
-  - 1秒以内に5回以上または1分以内に5回以上質問を送り、レート制限が発動するか確認。
-  - 「ぼく、ずんだもん、ちょっと多忙すぎちゃったのだ…1分待ってほしいのだ！」というメッセージが表示され、30秒待機後応答が返るか確認。
-- **通知オプション**:
-  - `!zunda notify off`で通知をオフにし、通知メッセージが表示されないか確認。
-  - `!zunda notify on`で通知をオンに戻し、通常の通知が復元するか確認。
-- **エラーログ確認**:
-  - 意図的にエラーを発生（例: APIキーの無効化）し、`error_logs.txt`にタイムスタンプ付きでエラーが記録されているか確認。
-- **トークン制限確認**:
-  - トークン使用量（7,500トークン/日）を超えるまで質問を繰り返し、「ぼく、ずんだもん、今日は一日中頑張ったから適当に答えるのだ…」というメッセージが表示され、Mixtral 8x7Bで軽量応答が返るか確認。
-  - 24時間待機後、通常のDeepSeek R1応答が復元するか確認。
-
-## 注意点
-- **Replitの無料枠**:
-  - Replit無料枠（CPU、512MB RAM）で動作するため、負荷が高い場合処理が遅延する可能性あり。
-- **Discordのレート制限**:
-  - 50リクエスト/秒、10,000リクエスト/10分の制限に対応し、コードの`safe_send()`で自動待機（1秒/30秒）。
-- **APIキーとトークンの管理**:
-  - `TOKEN`と`DEEPSEEK_API_KEY`は安全に管理（Replit Secretsや環境変数を使用）。他人に公開しないでください。
-- **トークン制限**:
-  - DeepSeek R1の7,500トークン/日制限を超えると、24時間待機が必要。活発な使用には注意。
-
+## 6. トラブルシューティング
 ## トラブルシューティング
-- **エラー: 404 Not Found**:
-  - DiscordチャンネルIDやBotトークンが正しいか確認。ReplitのSecretsを再確認。
-- **エラー: 429 Too Many Requests**:
-  - レート制限が発動しているため、1分待機後再試行。コードの`safe_send()`で自動対応済み。
-- **エラー: APIキーが無効**:
-  - DeepSeek APIキーが正しいか確認。Replit Secretsを更新。
-- **エラー: メモリ不足**:
-  - Replit無料枠のメモリ（512MB）を超えた場合、ログサイズを減らす（`MAX_SIZE`を調整）。
+- **Botが起動しない**:
+  Replitの「Run」ボタンを押しても「Bot is ready!」が出ない場合、環境変数（Secrets）を確認して、APIキーが正しいかチェック。
+  DiscordでBotがオンラインにならない場合、チャンネルIDやBotトークンが間違ってる可能性があるから、設定を見直して。
+
+- **応答が遅いまたはエラー**:
+  「サーバーが疲れちゃった…」が出たら、1分待ってから再試行。インターネット接続やAPIの制限を確認。
+  error_logs.txtにエラーが記録されてるから、内容を開発者に相談してね。
+
+- **レート制限に引っかかる**:
+  1秒に5回以上質問すると「多忙すぎちゃった…」が出るから、30秒待ってから再試行してね。
+
 
 ## ライセンス
 MITライセンス（変更可能）。
