@@ -12,10 +12,11 @@
    - メールアドレスまたはGoogleアカウントでログイン。
 
 ### 2.2 Replitプロジェクトを作成
-- Replitダッシュボードで「+ New Repl」をクリック。
-- **Language**: 「Python」を選択。
-- **Repl Name**: 「zunda-bot」と入力。
-- **Template**: 「Blank Repl」を選択。
+- Replitダッシュボードで「Apps」-「+ New Repl」をクリック。
+- 「choose a Template」タブを選択。
+- **Template**: 「Python」」を選択。
+- **Title**: 「zunda-bot」と入力。
+
 - 「Create Repl」をクリック。
 
 ### 2.3 コードをGitHubから追加
