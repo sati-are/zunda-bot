@@ -13,10 +13,10 @@
 
 ### 2.2 Replitプロジェクトを作成
 - Replitダッシュボードで「Apps」-「+ New Repl」をクリック。
+  
 -「choose a Template」タブを選択。
 - **Template**: 「Python」を選択。
 - **Title**: 「zunda-bot」と入力。
-  
 
 - 「Create Repl」をクリック。
 
